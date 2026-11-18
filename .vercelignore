@@ -1,0 +1,15 @@
+# Never upload secrets or local data
+.env
+**/.env
+**/.env.*
+!**/.env.example
+# Not needed on Vercel
+**/node_modules
+web/dist
+server/uploads
+local
+agent
+deploy
+docker-compose.yml
+**/Dockerfile
+web/Caddyfile

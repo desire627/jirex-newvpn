@@ -1,0 +1,10 @@
+{
+  "name": "jirex",
+  "private": true,
+  "description": "JIREX VPN service. Run `npm start` here (or in local/) to try it on your PC.",
+  "scripts": {
+    "start": "node local/start.mjs",
+    "reset": "node local/start.mjs --reset",
+    "postinstall": "npm --prefix local install --no-audit --no-fund"
+  }
+}

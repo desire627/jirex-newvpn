@@ -1,0 +1,18 @@
+# Caddy gets a free HTTPS certificate for your domain automatically.
+{$DOMAIN} {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+
+	# pdf.js (receipt viewer) worker must be served as JavaScript
+	@mjs path *.mjs
+	header @mjs Content-Type "text/javascript; charset=utf-8"
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
