@@ -33,6 +33,11 @@ export default {
     account: 'Аккаунт',
     profile: 'Профиль',
     privacy: 'Политика конфиденциальности',
+    installTitle: 'Установить JIREX',
+    installDescription: 'Добавьте JIREX на устройство для быстрого доступа.',
+    installAction: 'Установить приложение',
+    installIosHelp: 'В Safari нажмите «Поделиться», затем «На экран Домой».',
+    installBrowserHelp: 'Откройте меню браузера и выберите «Установить приложение» или «На главный экран».',
   },
 
   support: {

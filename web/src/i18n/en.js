@@ -33,6 +33,11 @@ export default {
     account: 'Account',
     profile: 'Profile',
     privacy: 'Privacy Policy',
+    installTitle: 'Install JIREX',
+    installDescription: 'Add JIREX to your device for quick access.',
+    installAction: 'Install app',
+    installIosHelp: 'In Safari, tap Share, then Add to Home Screen.',
+    installBrowserHelp: 'Open your browser menu and choose Install app or Add to Home Screen.',
   },
 
   support: {

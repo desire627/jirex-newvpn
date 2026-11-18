@@ -2,6 +2,7 @@ import { ChevronDown, CreditCard, Loader2, LogOut, UserRound } from 'lucide-reac
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api.js';
+import InstallAppPrompt from './components/InstallAppPrompt.jsx';
 import { SupportButton } from './components/Support.jsx';
 import { LangSwitch, useI18n } from './i18n/index.jsx';
 import Account from './pages/Account.jsx';
@@ -150,8 +151,9 @@ function AppShell({ children }) {
 // admin: admins only · default: customers only (admins are sent to adminTo)
 function Protected({ children, admin, adminTo = '/admin' }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <FullPageSpinner />;
-  if (!user) return <Navigate to={admin ? '/admin/login' : '/login'} replace />;
+  if (!user) return <Navigate to={admin ? '/admin/login' : '/login'} state={{ from: location }} replace />;
   if (admin && !user.isAdmin) return <Navigate to="/dashboard" replace />;
   if (!admin && user.isAdmin) return <Navigate to={adminTo} replace />;
   return <AppShell>{children}</AppShell>;
@@ -274,6 +276,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <InstallAppPrompt />
     </AuthContext.Provider>
   );
 }

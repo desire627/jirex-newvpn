@@ -14,7 +14,7 @@ import { Copy,
   Zap,
 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useAuth } from '../App.jsx';
 import OtpInput from '../components/OtpInput.jsx';
@@ -94,6 +94,7 @@ export default function Auth({ mode }) {
   const adminSetup = mode === 'adminSetup';
   const { user, setUser } = useAuth();
   const { t, tr, lang } = useI18n();
+  const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const artRef = useFitArt();
@@ -122,7 +123,15 @@ export default function Auth({ mode }) {
   }, [adminLogin]);
 
   const home = (u) => (u.isAdmin ? '/admin' : '/dashboard');
-  if (user) return <Navigate to={home(user)} replace />;
+  const returnTo = (u) => {
+    const from = location.state?.from;
+    const path = from?.pathname;
+    if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) return home(u);
+    const isAdminPath = path === '/admin' || path.startsWith('/admin/');
+    if (isAdminPath !== Boolean(u.isAdmin)) return home(u);
+    return { pathname: path, search: from.search || '', hash: from.hash || '' };
+  };
+  if (user) return <Navigate to={returnTo(user)} replace />;
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   function go(nextStep) {
@@ -135,7 +144,7 @@ export default function Auth({ mode }) {
     setUser(u);
     if (firstTime) toast(t('auth.welcomeNew', { name: u.firstName }), { body: t('auth.welcomeNewBody') });
     else toast(u.firstName ? t('auth.welcomeBackName', { name: u.firstName }) : t('auth.welcomeBack'));
-    navigate(home(u));
+    navigate(returnTo(u), { replace: true });
   }
 
   async function copyGeneratedKey() {
@@ -265,7 +274,7 @@ export default function Auth({ mode }) {
       });
       setUser(res.user);
       toast(t('auth.resetDone'), { body: t('auth.resetDoneBody') });
-      navigate(home(res.user));
+      navigate(returnTo(res.user), { replace: true });
     } catch (err) {
       setError(err.message);
       setBusy(false);
