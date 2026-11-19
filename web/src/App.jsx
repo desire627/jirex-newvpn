@@ -2,7 +2,6 @@ import { ChevronDown, CreditCard, Loader2, LogOut, UserRound } from 'lucide-reac
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api.js';
-import InstallAppPrompt from './components/InstallAppPrompt.jsx';
 import { SupportButton } from './components/Support.jsx';
 import { LangSwitch, useI18n } from './i18n/index.jsx';
 import Account from './pages/Account.jsx';
@@ -276,7 +275,6 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <InstallAppPrompt />
     </AuthContext.Provider>
   );
 }

@@ -33,11 +33,11 @@ export default {
     account: 'Аккаунт',
     profile: 'Профиль',
     privacy: 'Политика конфиденциальности',
-    installTitle: 'Установить JIREX',
-    installDescription: 'Добавьте JIREX на устройство для быстрого доступа.',
-    installAction: 'Установить приложение',
-    installIosHelp: 'В Safari нажмите «Поделиться», затем «На экран Домой».',
-    installBrowserHelp: 'Откройте меню браузера и выберите «Установить приложение» или «На главный экран».',
+    downloadAndroid: 'Скачать JIREX для Android',
+    downloadIos: 'Скачать JIREX для iPhone',
+    iphoneSetup: 'Настройка на iPhone',
+    iphoneSetupHelp: 'Установите AmneziaWG, войдите в JIREX и добавьте iPhone в личном кабинете. Затем скачайте конфигурацию и импортируйте её в AmneziaWG.',
+    downloadAmnezia: 'Скачать AmneziaWG в App Store',
   },
 
   support: {

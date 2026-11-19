@@ -38,9 +38,10 @@ can't easily recognise the connection as a VPN and block it.
 **Language:** visitors whose browser is set to Russian see the site in Russian; everyone else sees English.
 Anyone can switch with the **EN / RU** button in the header, and the choice is remembered.
 
-**Installable app:** supported browsers can install JIREX from its install prompt. On iPhone or iPad,
-open the site in Safari, tap **Share**, then **Add to Home Screen**. Account, payment and VPN operations
-still require an internet connection.
+**VPN apps:** the home page links to the signed Android APK on GitHub. Set `VITE_JIREX_ANDROID_URL` at
+web build time to override that link.
+Set `VITE_JIREX_IOS_URL` when the JIREX iPhone app has a public download link. Until then, the home page
+shows iPhone setup instructions for AmneziaWG and links to its Russian App Store listing.
 
 **Render Static Site:** keep `/api/*` → your API URL as **Rewrite**, followed by `/*` → `/index.html`
 as **Rewrite** (not Redirect). The fallback must preserve the requested URL so refreshing a page such as

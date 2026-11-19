@@ -809,36 +809,6 @@ code { font-family: var(--mono); font-size: 0.85em; background: var(--surface-2)
 .receipt-viewer { width: 100%; height: min(70vh, 720px); border: 0; border-radius: 12px; background: #fff; }
 .receipt-viewer-img { max-width: 100%; max-height: 70vh; margin: 0 auto; border-radius: 12px; }
 
-.pwa-install {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: min(440px, calc(100vw - 32px));
-  padding: 14px;
-  border: 1px solid var(--border-strong);
-  border-radius: 16px;
-  background: rgba(18, 25, 37, 0.98);
-  box-shadow: var(--shadow-pop);
-}
-.pwa-install-copy { flex: 1; min-width: 0; }
-.pwa-install-copy strong { display: block; font-size: 14px; }
-.pwa-install-copy p { margin-top: 3px; color: var(--text-2); font-size: 12.5px; line-height: 1.45; }
-.pwa-install-actions { display: flex; align-items: center; gap: 6px; }
-
-@media (max-width: 560px) {
-  .pwa-install {
-    left: 12px;
-    right: 12px;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    width: auto;
-    flex-wrap: wrap;
-  }
-  .pwa-install-actions { width: 100%; justify-content: flex-end; }
-}
 .reason-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .reason-chips button { height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--border-strong); background: var(--bg-raised); color: var(--text-2); font-size: 13px; cursor: pointer; }
 .reason-chips button:hover { color: var(--text); border-color: #3d4b66; }

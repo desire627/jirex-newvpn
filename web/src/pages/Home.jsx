@@ -84,6 +84,9 @@ function MarketingNav() {
 const STEP_ICONS = [UserPlus, Wallet, Download];
 const FEATURE_ICONS = [ShieldHalf, Zap, EyeOff, Wifi, Smartphone, Wallet];
 const PAY_ICONS = [Landmark, FileCheck2, ShieldCheck];
+const androidDownload = import.meta.env.VITE_JIREX_ANDROID_URL
+  || 'https://github.com/desire627/jirex-newvpn/releases/download/android-v0.1.0/jirex-vpn-0.1.0.apk';
+const iosDownload = import.meta.env.VITE_JIREX_IOS_URL;
 
 // Cards per row: all in one row up to 4; 5 → 3 + 2, 6 → 3 + 3, 7+ → rows of 4.
 const priceColumns = (n) => (n <= 4 ? n : n <= 6 ? 3 : 4);
@@ -179,6 +182,20 @@ export default function Home() {
                 {t('home.ctaSecondary')}
               </a>
             </div>
+            <div className="hero-cta">
+              <a href={androidDownload} className="btn btn-secondary">
+                <Download /> {t('common.downloadAndroid')}
+              </a>
+              {iosDownload ? (
+                <a href={iosDownload} className="btn btn-secondary">
+                  <Tablet /> {t('common.downloadIos')}
+                </a>
+              ) : (
+                <a href="#iphone-setup" className="btn btn-ghost">
+                  <Tablet /> {t('common.iphoneSetup')}
+                </a>
+              )}
+            </div>
             <div className="hero-proof">
               {t('home.proof').map((p) => (
                 <span key={p}>
@@ -208,6 +225,20 @@ export default function Home() {
           </span>
         </div>
       </div>
+
+      {!iosDownload && (
+        <section id="iphone-setup" className="section">
+          <div className="container">
+            <div className="section-head">
+              <h2>{t('common.iphoneSetup')}</h2>
+              <p>{t('common.iphoneSetupHelp')}</p>
+              <a href="https://apps.apple.com/ru/app/amneziawg/id6478942365" className="btn btn-secondary">
+                <Download /> {t('common.downloadAmnezia')}
+              </a>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="section" id="how">
         <div className="container">
