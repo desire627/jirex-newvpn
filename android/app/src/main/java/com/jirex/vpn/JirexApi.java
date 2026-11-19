@@ -39,14 +39,8 @@ final class JirexApi {
             }
             int status = connection.getResponseCode();
             if (status < 200 || status >= 300) throw new RequestFailure(status);
-            if ("/auth/login".equals(path)) {
-                String cookie = connection.getHeaderField("Set-Cookie");
-                if (cookie == null || !cookie.startsWith("session=")) {
-                    throw new IOException("JIREX did not return a session.");
-                }
-                saveCookie(cookie);
-            }
             if ("/auth/logout".equals(path) || "/auth/logout-all".equals(path)) clearSession();
+            else acceptSessionCookie(connection, "/auth/login".equals(path));
             try (var stream = connection.getInputStream()) {
                 var data = new ByteArrayOutputStream();
                 byte[] buffer = new byte[8192];
@@ -59,6 +53,12 @@ final class JirexApi {
         } finally {
             connection.disconnect();
         }
+    }
+
+    private void acceptSessionCookie(HttpsURLConnection connection, boolean required) throws IOException {
+        String cookie = connection.getHeaderField("Set-Cookie");
+        if (cookie != null && cookie.startsWith("session=")) saveCookie(cookie);
+        else if (required) throw new IOException("JIREX did not return a session.");
     }
 
     private HttpsURLConnection open(String method, String path) throws IOException {
@@ -96,6 +96,7 @@ final class JirexApi {
         try {
             int status = connection.getResponseCode();
             if (status != 200) throw new RequestFailure(status);
+            acceptSessionCookie(connection, false);
             if (connection.getContentType() == null || !connection.getContentType().startsWith("text/plain")) {
                 throw new IOException("JIREX returned an unexpected download.");
             }

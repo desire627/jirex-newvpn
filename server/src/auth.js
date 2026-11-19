@@ -5,11 +5,18 @@ import { one, query } from './db.js';
 import { fail } from './errors.js';
 
 const COOKIE = 'session';
-const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_LIFETIME_SECONDS = 7 * 24 * 60 * 60;
 
 export const hashAccessKey = (key) => crypto.createHash('sha256').update(String(key).toLowerCase()).digest('hex');
 
 const COOKIE_OPTIONS = { httpOnly: true, secure: config.isProduction, sameSite: 'lax', path: '/' };
+
+function writeSessionCookie(res, user, sid) {
+  const token = jwt.sign({ sub: user.id, ver: user.token_version, sid, typ: 'session' }, config.jwtSecret, {
+    expiresIn: SESSION_LIFETIME_SECONDS,
+  });
+  res.cookie(COOKIE, token, { ...COOKIE_OPTIONS, maxAge: SESSION_LIFETIME_SECONDS * 1000 });
+}
 
 // Reads this browser's session token, even if it has expired (used when signing out).
 function readToken(req) {
@@ -31,13 +38,10 @@ export async function setSession(res, user, req) {
   const sid = crypto.randomBytes(24).toString('base64url');
   await query(
     `INSERT INTO sessions (id, user_id, expires_at, user_agent)
-     VALUES ($1, $2, now() + interval '30 days', $3)`,
-    [sid, user.id, String(req?.headers?.['user-agent'] || '').slice(0, 200)],
+     VALUES ($1, $2, now() + make_interval(secs => $4::int), $3)`,
+    [sid, user.id, String(req?.headers?.['user-agent'] || '').slice(0, 200), SESSION_LIFETIME_SECONDS],
   );
-  const token = jwt.sign({ sub: user.id, ver: user.token_version, sid, typ: 'session' }, config.jwtSecret, {
-    expiresIn: '30d',
-  });
-  res.cookie(COOKIE, token, { ...COOKIE_OPTIONS, maxAge: MAX_AGE_MS });
+  writeSessionCookie(res, user, sid);
 }
 
 // Removes only the cookie (e.g. after the account itself was deleted).
@@ -64,15 +68,19 @@ export async function requireAuth(req, res, next) {
     if (!token) return fail(res, 401, 'not_logged_in');
     const { sub, ver, sid, typ } = jwt.verify(token, config.jwtSecret);
     if (typ !== 'session' || !sid) return fail(res, 401, 'not_logged_in');
-    // The session must still exist on the server (it's deleted when you sign out).
+    // Extend only a live session that still belongs to the same, eligible account.
     const user = await one(
-      `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-        WHERE s.id = $1 AND s.user_id = $2 AND s.expires_at > now()`,
-      [sid, sub],
+      `UPDATE sessions s
+          SET expires_at = GREATEST(s.expires_at, now() + make_interval(secs => $4::int))
+         FROM users u
+        WHERE s.id = $1 AND s.user_id = $2 AND s.expires_at > now()
+          AND u.id = s.user_id AND u.token_version = $3 AND u.deleted_at IS NULL
+          AND (u.auth_type = 'key' OR u.email_verified)
+       RETURNING u.*`,
+      [sid, sub, ver, SESSION_LIFETIME_SECONDS],
     );
-    if (!user || user.deleted_at || (user.auth_type !== 'key' && !user.email_verified) || user.token_version !== ver) {
-      return fail(res, 401, 'not_logged_in');
-    }
+    if (!user) return fail(res, 401, 'not_logged_in');
+    writeSessionCookie(res, user, sid);
     req.user = user;
     req.sessionId = sid;
     next();

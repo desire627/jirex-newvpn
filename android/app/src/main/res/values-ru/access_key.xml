@@ -1,0 +1,6 @@
+<resources>
+    <string name="access_key_reminder">Храните ключ доступа в надёжном месте. Он понадобится для входа после семи дней без активности.</string>
+    <string name="sign_out_title">Выйти из JIREX VPN?</string>
+    <string name="sign_out_key_reminder">Перед выходом сохраните ключ доступа из профиля. Он понадобится для повторного входа.</string>
+    <string name="view_access_key">Посмотреть ключ</string>
+</resources>

@@ -1,0 +1,6 @@
+<resources>
+    <string name="access_key_reminder">Save your access key somewhere private. You’ll need it again after seven days of inactivity.</string>
+    <string name="sign_out_title">Sign out of JIREX VPN?</string>
+    <string name="sign_out_key_reminder">Save your access key from Account before signing out. You’ll need it to sign in again.</string>
+    <string name="view_access_key">View key</string>
+</resources>

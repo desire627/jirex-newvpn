@@ -72,6 +72,9 @@ async function nextFreeIpIndex(client, serverId) {
 }
 
 router.post('/devices', requireCustomer, async (req, res) => {
+  if (req.body.expectedUserId != null && req.body.expectedUserId !== req.user.id) {
+    return fail(res, 409, 'account_changed');
+  }
   const name = String(req.body.name || '').trim().slice(0, 40) || 'My device';
   const kind = DEVICE_KINDS.includes(req.body.kind) ? req.body.kind : 'phone';
   const server = await one('SELECT * FROM servers WHERE id = $1 AND enabled', [Number(req.body.serverId)]);

@@ -2,6 +2,7 @@ import { ChevronDown, CreditCard, Loader2, LogOut, UserRound } from 'lucide-reac
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api.js';
+import { registerApprovedBrowser } from './browserDevice.js';
 import { SupportButton } from './components/Support.jsx';
 import { LangSwitch, useI18n } from './i18n/index.jsx';
 import Account from './pages/Account.jsx';
@@ -217,7 +218,7 @@ export default function App() {
     };
   }, [navigate, toast, t]);
 
-  const refreshUser = () =>
+  const refreshUser = useCallback(() =>
     api('/auth/me')
       .then((d) => {
         setUser(d.user);
@@ -226,11 +227,52 @@ export default function App() {
       .catch(() => {
         setUser(null);
         return null;
-      });
+      }), []);
 
   useEffect(() => {
     refreshUser().finally(() => setLoading(false));
-  }, []);
+  }, [refreshUser]);
+
+  const customerId = user && !user.isAdmin ? user.id : null;
+  useEffect(() => {
+    if (!customerId || navigator.userAgent.includes('JirexAndroid/')) return;
+    let disposed = false;
+    let checking = false;
+    let observed;
+    const stillCurrent = () => !disposed && userRef.current?.id === customerId;
+
+    async function checkApproval() {
+      if (checking || document.visibilityState !== 'visible') return;
+      checking = true;
+      try {
+        const state = await api('/billing/activation');
+        if (!stillCurrent() || state.userId !== customerId) return;
+        const activationChanged = observed !== undefined
+          && (observed.approval !== state.approval || observed.active !== state.active);
+        observed = state;
+        if (activationChanged || userRef.current.active !== state.active) {
+          window.dispatchEvent(new Event('jirex:browser-account-updated'));
+          refreshUser();
+        }
+        if (!state.active || !state.approval) return;
+        const id = await registerApprovedBrowser(customerId, stillCurrent);
+        if (id && stillCurrent()) window.dispatchEvent(new Event('jirex:browser-account-updated'));
+      } catch {
+        // A manual setup is still available if the browser cannot store an installation ID.
+      } finally {
+        checking = false;
+      }
+    }
+
+    checkApproval();
+    const timer = window.setInterval(checkApproval, 15_000);
+    document.addEventListener('visibilitychange', checkApproval);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', checkApproval);
+    };
+  }, [customerId, refreshUser]);
 
   return (
     <AuthContext.Provider value={{ user, setUser, loading, refreshUser, signOut }}>

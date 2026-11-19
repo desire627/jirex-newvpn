@@ -583,7 +583,7 @@ export default function Auth({ mode }) {
             </Link>
           </p>
         )}
-        {!adminLogin && <p className="center tiny muted">{t('auth.keyLostHelp')}</p>}
+        {!adminLogin && <p className="center tiny muted">{t('auth.keepKeyReminder')} {t('auth.keyLostHelp')}</p>}
       </>
     );
   }

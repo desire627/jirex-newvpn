@@ -16,7 +16,7 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, daysUntil, formatDate } from '../api.js';
 import { useSupport } from '../components/Support.jsx';
@@ -104,6 +104,21 @@ function KeyCard() {
   const openSupport = useSupport();
   const [key, setKey] = useState(undefined); // undefined: loading · null: can't be shown
   const [shown, setShown] = useState(false);
+  const keyField = useRef(null);
+
+  async function copyKey() {
+    try {
+      await navigator.clipboard.writeText(key);
+      toast(t('common.copied'));
+    } catch {
+      setShown(true);
+      requestAnimationFrame(() => {
+        keyField.current?.focus();
+        keyField.current?.select();
+      });
+      toast(t('profile.copyKeyManually'), { type: 'info' });
+    }
+  }
 
   useEffect(() => {
     api('/account/key')
@@ -127,9 +142,14 @@ function KeyCard() {
       ) : key ? (
         <>
           <div className="key-view">
-            <code className="mono" data-testid="access-key">
-              {shown ? key : key.replace(/[0-9a-f]/gi, '•')}
-            </code>
+            <input
+              ref={keyField}
+              className="mono"
+              data-testid="access-key"
+              aria-label={t('auth.accessKey')}
+              value={shown ? key : key.replace(/[0-9a-f]/gi, '•')}
+              readOnly
+            />
             <button
               type="button"
               className="btn btn-ghost btn-icon"
@@ -142,7 +162,7 @@ function KeyCard() {
             <button
               type="button"
               className="btn btn-ghost btn-icon"
-              onClick={() => navigator.clipboard.writeText(key).then(() => toast(t('common.copied')))}
+              onClick={copyKey}
               title={t('common.copy')}
               aria-label={t('common.copy')}
             >
@@ -584,9 +604,9 @@ export default function Account() {
       </div>
 
       <div className="stack gap-16 account">
-        <ProfileHero />
         <SectionLabel>{t('profile.secSecurity')}</SectionLabel>
         <KeyCard />
+        <ProfileHero />
         <SessionsCard />
         <SectionLabel>{t('profile.secDetails')}</SectionLabel>
         <NameCard />

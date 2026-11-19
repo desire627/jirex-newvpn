@@ -8,7 +8,7 @@ Enter the customer's access key, choose a location, and tap the power button. Ac
 
 Devices, Payments, and Account open the same customer pages inside the app. In Payments you can choose a plan, see the bank transfer details, attach a receipt, and track its review.
 
-The app checks for payment approval when opened and approximately every 15 seconds while visible. When it sees an approved payment for an active account, it uses the selected location, or the first available location if none is selected. It registers this phone if needed and starts the tunnel after Android grants permission. If the app was closed at approval time, reopening it checks again.
+The app checks for payment approval when opened and approximately every 15 seconds while visible. When it sees an approved payment for an active account, it registers this phone at the selected location, or at the first available location if none is selected. Tap the power button when you're ready to connect. If the app was closed at approval time, reopening it checks again.
 
 The APK embeds the Apache-2.0 AmneziaWG Android tunnel library distributed by Zane Schepke as `com.zaneschepke:amneziawg-android:2.3.7`. The library supplies the Android VPN service and native tunnel implementation. See its [Maven Central metadata](https://central.sonatype.com/artifact/com.zaneschepke/amneziawg-android/2.3.7) for upstream details.
 

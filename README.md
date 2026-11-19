@@ -40,8 +40,7 @@ Anyone can switch with the **EN / RU** button in the header, and the choice is r
 
 **VPN apps:** the home page links to the signed Android APK on GitHub. Set `VITE_JIREX_ANDROID_URL` at
 web build time to override that link.
-Set `VITE_JIREX_IOS_URL` when the JIREX iPhone app has a public download link. Until then, the home page
-shows iPhone setup instructions for AmneziaWG and links to its Russian App Store listing.
+The home page includes a post-payment setup guide for Android, iPhone and iPad, Windows, and macOS.
 
 **Render Static Site:** keep `/api/*` → your API URL as **Rewrite**, followed by `/*` → `/index.html`
 as **Rewrite** (not Redirect). The fallback must preserve the requested URL so refreshing a page such as
@@ -182,13 +181,15 @@ static-egress setup.
 - **Receipts** are stored encrypted (AES-256-GCM) and deleted automatically 90 days after review
   (`RECEIPT_RETENTION_DAYS`); the payment record stays. They are only accepted if the file really is a PDF/JPG/PNG/WebP (checked from its content, not its
   name), up to 8 MB, max 2 waiting per customer. Only that customer and admins can open them.
-- **Sign-in:** customers generate a UUID access key (no personal details required), which is shown once and stored only as a SHA-256 hash;
-  they use it for every sign-in. Admins use email + password and a 6-digit email code, with email verification
+- **Sign-in:** customers generate a UUID access key (no personal details required) and use it for every sign-in.
+  Save the key privately. It can be viewed in the signed-in profile, and sessions expire after seven days of inactivity.
+  Admins use email + password and a 6-digit email code, with email verification
   required before their first sign-in. Existing admins can add other admins from the dashboard. Codes are
   stored hashed, expire after 10 minutes, lock after 5 wrong tries, and are limited to one resend a minute and
   6 an hour. Admin password resets work the same way and sign the account out on every other device. Emails
   go out through the SMTP account in `server/.env` (`SMTP_*` settings).
-- **Security:** admin passwords are hashed with bcrypt; customer access keys are stored as SHA-256 hashes;
+- **Security:** admin passwords are hashed with bcrypt. Customer access key hashes are used for sign-in,
+  and encrypted copies let customers view their own keys.
   customers' private keys are encrypted (AES-256-GCM) in the
   database; the agent accepts only the API server's IP, a secret token and a pinned TLS certificate;
   VPN customers can't reach each other.

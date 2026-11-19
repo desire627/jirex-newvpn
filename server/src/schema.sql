@@ -93,6 +93,10 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_agent TEXT
 );
 CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
+-- Legacy sessions may still have up to 30 days remaining. Give them at most seven
+-- days to return, since activity before this upgrade wasn't recorded.
+UPDATE sessions SET expires_at = now() + interval '168 hours'
+ WHERE expires_at > now() + interval '168 hours';
 
 -- One-time codes sent by email (stored only as a hash)
 CREATE TABLE IF NOT EXISTS otp_codes (

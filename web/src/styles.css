@@ -546,10 +546,36 @@ code { font-family: var(--mono); font-size: 0.85em; background: var(--surface-2)
 .float-chip.c2 { right: 0; bottom: 4px; animation-delay: 1.5s; }
 @keyframes float { 50% { transform: translateY(-10px); } }
 
-.platforms { border-block: 1px solid var(--border); background: var(--bg-raised); }
-.platforms-inner { display: flex; align-items: center; justify-content: center; gap: 40px; padding: 22px 20px; flex-wrap: wrap; color: var(--muted); font-weight: 600; font-size: 14px; }
-.platforms-inner span { display: inline-flex; align-items: center; gap: 9px; }
-.platforms-inner svg { width: 18px; height: 18px; }
+.setup-guide { border-block: 1px solid var(--border); background: var(--bg-raised); }
+.setup-guide-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 7px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); }
+.setup-guide-tabs button { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 12px 8px; border: 1px solid transparent; border-radius: 11px; color: var(--muted); background: transparent; cursor: pointer; font: inherit; font-weight: 700; }
+.setup-guide-tabs button:hover { color: var(--text); }
+.setup-guide-tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent-line); background: rgba(52, 227, 164, .08); }
+.setup-guide-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 5vw, 64px); margin-top: 16px; padding: clamp(20px, 4vw, 46px); border: 1px solid var(--border); border-radius: 22px; background: var(--bg); }
+.setup-guide-content h3 { font-size: clamp(21px, 3vw, 29px); }
+.setup-guide-steps { display: grid; gap: 18px; list-style: none; counter-reset: steps; margin: 22px 0 26px; padding: 0; }
+.setup-guide-steps li { position: relative; padding-left: 45px; counter-increment: steps; }
+.setup-guide-steps li::before { content: counter(steps); position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--accent-line); border-radius: 10px; color: var(--accent); font-weight: 700; }
+.setup-guide-steps p { margin-top: 4px; color: var(--text-2); }
+.setup-figure { display: grid; justify-items: center; gap: 12px; margin: 0; min-width: 0; }
+.setup-figure img { display: block; width: auto; max-width: 100%; max-height: 420px; object-fit: contain; border-radius: 14px; }
+.setup-figure figcaption { color: var(--muted); font-size: 12px; text-align: center; }
+.setup-figure figcaption a { text-decoration: underline; text-underline-offset: 3px; }
+.setup-guide-shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; }
+.setup-guide-shots:not(:empty) { margin-top: 18px; }
+.setup-guide-reference { display: grid; gap: 12px; text-align: center; }
+.setup-guide-reference .setup-guide-shots { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; }
+.setup-phone { display: grid; justify-items: center; gap: 7px; width: min(100%, 270px); overflow: hidden; border: 7px solid #192332; border-radius: 28px; background: linear-gradient(180deg, #0d1420, #0a0f17); box-shadow: var(--shadow-pop); }
+.setup-phone-brand { display: flex; align-items: center; justify-self: stretch; gap: 8px; margin: 18px 15px 0; font-weight: 700; }
+.setup-phone-power { display: grid; place-items: center; width: 88px; aspect-ratio: 1; margin: 28px 0 17px; color: var(--accent-ink); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #5af5bf, #17b77d); box-shadow: 0 0 0 11px #34e3a422, 0 0 34px #34e3a44d; }
+.setup-phone-location { display: flex; align-items: center; gap: 8px; justify-self: stretch; margin: 8px 14px 9px; padding: 10px; border-radius: 10px; background: #161e2a; font-size: 12px; }
+.setup-phone-location svg, .setup-phone-nav span:first-child { color: var(--accent); }
+.setup-phone-nav { display: grid; grid-template-columns: repeat(5, 1fr); align-self: end; justify-self: stretch; padding: 9px 3px; border-top: 1px solid #242e3b; background: #101824; }
+.setup-phone-nav span { display: grid; justify-items: center; gap: 4px; color: var(--muted); font-size: 8px; white-space: nowrap; }
+@media (max-width: 720px) {
+  .setup-guide-panel { grid-template-columns: minmax(0, 1fr); }
+  .setup-guide-tabs { grid-template-columns: repeat(2, 1fr); }
+}
 
 .section { padding: 100px 0; }
 .section-head { text-align: center; max-width: 640px; margin: 0 auto 56px; }

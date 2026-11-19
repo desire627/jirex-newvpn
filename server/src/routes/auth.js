@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { clearSession, endAllSessions, endSession, hashAccessKey, newCustomerCode, publicUser, requireAuth, setSession } from '../auth.js';
 import { config } from '../config.js';
 import { encrypt } from '../crypto.js';
-import { one } from '../db.js';
+import { one, query } from '../db.js';
 import { canonicalEmail, domainAcceptsMail, isDisposable, validEmailFormat } from '../email.js';
 import { fail } from '../errors.js';
 import { checkCode, createChallenge, issueCode, readChallenge } from '../otp.js';
@@ -110,8 +110,16 @@ router.post('/login', startLimiter, async (req, res) => {
   if (!/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i.test(key)) {
     return fail(res, 401, 'wrong_login');
   }
-  const user = await one("SELECT * FROM users WHERE access_key_hash = $1 AND auth_type = 'key' AND deleted_at IS NULL", [hashAccessKey(key)]);
+  const keyHash = hashAccessKey(key);
+  const user = await one("SELECT * FROM users WHERE access_key_hash = $1 AND auth_type = 'key' AND deleted_at IS NULL", [keyHash]);
   if (!user) return fail(res, 401, 'wrong_login');
+  // A legacy account may only have a hash. Save the verified key so the profile can display it.
+  if (!user.access_key_enc) {
+    await query(
+      'UPDATE users SET access_key_enc = $1 WHERE id = $2 AND access_key_hash = $3 AND access_key_enc IS NULL',
+      [encrypt(key.toLowerCase()), user.id, keyHash],
+    );
+  }
   await setSession(res, user, req);
   res.json({ user: publicUser(user) });
 });

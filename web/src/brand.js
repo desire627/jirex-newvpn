@@ -9,7 +9,7 @@ export const BRAND = {
 // Shown in the Support window (top bar → Support). Edit freely; empty entries are hidden.
 export const SUPPORT = {
   emails: ['desireasiimwe24@gmail.com', 'bwambalejim221@gmail.com'],
-  phone: '+256 741 446 624',
+  phone: '+7 977 603-02-22',
   // Chat apps open a conversation with the phone number above.
   whatsapp: true,
   telegram: true,

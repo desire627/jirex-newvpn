@@ -37,7 +37,11 @@ export default function Billing() {
     };
     refresh();
     window.addEventListener('jirex:android-account-updated', refresh);
-    return () => window.removeEventListener('jirex:android-account-updated', refresh);
+    window.addEventListener('jirex:browser-account-updated', refresh);
+    return () => {
+      window.removeEventListener('jirex:android-account-updated', refresh);
+      window.removeEventListener('jirex:browser-account-updated', refresh);
+    };
   }, []);
 
   const pending = payments?.find((p) => p.status === 'pending');
