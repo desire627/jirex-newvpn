@@ -85,7 +85,7 @@ const STEP_ICONS = [UserPlus, Wallet, Download];
 const FEATURE_ICONS = [ShieldHalf, Zap, EyeOff, Wifi, Smartphone, Wallet];
 const PAY_ICONS = [Landmark, FileCheck2, ShieldCheck];
 const androidDownload = import.meta.env.VITE_JIREX_ANDROID_URL
-  || 'https://github.com/desire627/jirex-newvpn/releases/download/android-v0.1.0/jirex-vpn-0.1.0.apk';
+  || 'https://github.com/desire627/jirex-newvpn/releases/download/android-v0.2.0/jirex-vpn-0.2.0.apk';
 const iosDownload = import.meta.env.VITE_JIREX_IOS_URL;
 
 // Cards per row: all in one row up to 4; 5 → 3 + 2, 6 → 3 + 3, 7+ → rows of 4.
