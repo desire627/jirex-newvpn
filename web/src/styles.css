@@ -310,6 +310,17 @@ code { font-family: var(--mono); font-size: 0.85em; background: var(--surface-2)
 .page-head h1 { font-size: 28px; }
 .page-head p { color: var(--muted); margin-top: 6px; }
 
+.android-portal body { font-size: .875rem; line-height: 1.5; }
+.android-portal .page-head h1,
+.android-portal .auth-box h1 { font-size: 1.25rem; }
+.android-portal .status-top h2,
+.android-portal .profile-hero-main h2,
+.android-portal .section-title h2,
+.android-portal .modal-head h3 { font-size: 1.125rem; }
+.android-portal .plan-option .amount { font-size: 1.1875rem; }
+.android-portal .mini-stat strong,
+.android-portal .logo-word { font-size: 1rem; }
+
 /* =====================================================================
    Customer dashboard
    ===================================================================== */

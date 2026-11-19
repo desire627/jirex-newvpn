@@ -103,10 +103,10 @@ public final class MainActivity extends Activity {
         ImageView mark = new ImageView(this);
         mark.setImageResource(R.drawable.jirex_mark);
         header.addView(mark, new LinearLayout.LayoutParams(dp(30), dp(30)));
-        TextView brand = label("JIREX", 20, Color.WHITE, true);
+        TextView brand = label("JIREX", 17, Color.WHITE, true);
         brand.setPadding(dp(8), 0, 0, 0);
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        badge = label("●  Offline", 12, MUTED, true);
+        badge = label("●  Offline", 11, MUTED, true);
         badge.setBackground(card(24));
         badge.setPadding(dp(12), dp(7), dp(12), dp(7));
         header.addView(badge);
@@ -116,12 +116,12 @@ public final class MainActivity extends Activity {
         power.setContentDescription("Connect VPN");
         power.setOnClickListener(v -> toggleConnection());
         screen.addView(power, new LinearLayout.LayoutParams(-1, dp(250)));
-        status = center("Disconnected", 26, Color.WHITE, true);
-        detail = center("Tap to connect", 14, MUTED, false);
+        status = center("Disconnected", 21, Color.WHITE, true);
+        detail = center("Tap to connect", 13, MUTED, false);
         add(status, 0);
         add(detail, 6);
 
-        location = label("⌖   Choose location    ›", 16, Color.WHITE, true);
+        location = label("⌖   Choose location    ›", 14, Color.WHITE, true);
         location.setBackground(card(14));
         location.setPadding(dp(16), dp(16), dp(16), dp(16));
         location.setOnClickListener(v -> chooseLocation());
@@ -268,9 +268,9 @@ public final class MainActivity extends Activity {
         LinearLayout tile = column();
         tile.setBackground(card(12));
         tile.setPadding(dp(14), dp(14), dp(14), dp(14));
-        TextView value = label("—", 18, Color.WHITE, true);
+        TextView value = label("—", 15, Color.WHITE, true);
         tile.addView(value);
-        tile.addView(label(title, 13, MUTED, false));
+        tile.addView(label(title, 12, MUTED, false));
         var params = new LinearLayout.LayoutParams(0, -2, 1);
         params.leftMargin = dp(margin);
         row.addView(tile, params);
@@ -285,11 +285,13 @@ public final class MainActivity extends Activity {
         LinearLayout form = column();
         form.setPadding(dp(24), 0, dp(24), 0);
         EditText address = new EditText(this);
+        address.setTextSize(15);
         address.setHint("https://your-jirex-site");
         address.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         address.setText(portalApi == null ? BuildConfig.JIREX_URL : portalApi.origin());
         if (BuildConfig.JIREX_URL.isEmpty()) form.addView(address);
         EditText key = new EditText(this);
+        key.setTextSize(15);
         key.setHint("JIREX access key");
         key.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         form.addView(key);

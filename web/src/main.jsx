@@ -7,6 +7,10 @@ import { I18nProvider } from './i18n/index.jsx';
 import { ConfirmProvider, ToastProvider } from './ui.jsx';
 import './styles.css';
 
+if (navigator.userAgent.includes('JirexAndroid/')) {
+  document.documentElement.classList.add('android-portal');
+}
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((error) => {
