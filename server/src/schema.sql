@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'phone';
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS installation_id UUID;
+CREATE UNIQUE INDEX IF NOT EXISTS devices_installation_key ON devices (user_id, server_id, installation_id);
 
 -- AmneziaWG camouflage settings for each server (Jc, Jmin, Jmax, S1, S2, H1-H4).
 -- Every customer config for that server must carry the same values.

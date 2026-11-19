@@ -34,20 +34,26 @@ export async function setSetting(key, value) {
   );
 }
 
-export async function migrate() {
-  const sql = await fs.readFile(new URL('./schema.sql', import.meta.url), 'utf8');
-  // Several servers can start at once (serverless): only one updates the tables at a time.
-  // A transaction lock also works through connection poolers (Neon, Supabase).
+export async function transaction(operation) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('SELECT pg_advisory_xact_lock(727274)');
-    await client.query(sql);
+    const result = await operation(client);
     await client.query('COMMIT');
+    return result;
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     throw err;
   } finally {
     client.release();
   }
+}
+
+export async function migrate() {
+  const sql = await fs.readFile(new URL('./schema.sql', import.meta.url), 'utf8');
+  // Serialize schema changes across processes, including behind connection poolers.
+  await transaction(async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock(727274)');
+    await client.query(sql);
+  });
 }

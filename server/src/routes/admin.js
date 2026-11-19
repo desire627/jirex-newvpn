@@ -3,7 +3,7 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 import { hashAccessKey, requireAdmin, requireAuth } from '../auth.js';
 import { agentRequest } from '../agentClient.js';
-import { extendAccess } from '../billing.js';
+import { approveTransfer, extendAccess } from '../billing.js';
 import { getSetting, one, query, setSetting } from '../db.js';
 import { getPlan, listPlans, newPlanId, readPlanInput } from '../plans.js';
 import { encrypt } from '../crypto.js';
@@ -237,15 +237,7 @@ router.get('/payments', async (req, res) => {
 
 // Approve a bank-transfer receipt: marks it paid and adds the plan's days.
 router.post('/payments/:id/approve', async (req, res) => {
-  const payment = await one(
-    `UPDATE payments SET status = 'successful', reviewed_at = now(), review_note = NULL
-      WHERE id = $1 AND status = 'pending'
-      RETURNING user_id, plan`,
-    [Number(req.params.id)],
-  );
-  if (!payment) return fail(res, 409, 'already_reviewed');
-  const plan = await getPlan(payment.plan);
-  if (payment.user_id && plan) await extendAccess(payment.user_id, plan.days);
+  await approveTransfer(Number(req.params.id));
   res.json({ ok: true });
 });
 

@@ -41,6 +41,14 @@ export default function DeviceSetup({ device }) {
   const p = PLATFORMS[platform];
 
   function download() {
+    if (navigator.userAgent.includes('JirexAndroid/')) {
+      const a = Object.assign(document.createElement('a'), {
+        href: `/api/devices/${device.id}/config?download=1&name=${encodeURIComponent(fileName(device.name))}`,
+        download: fileName(device.name),
+      });
+      a.click();
+      return;
+    }
     const url = URL.createObjectURL(new Blob([device.config], { type: 'text/plain' }));
     const a = Object.assign(document.createElement('a'), { href: url, download: fileName(device.name) });
     a.click();

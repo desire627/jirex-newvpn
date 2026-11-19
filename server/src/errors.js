@@ -34,6 +34,7 @@ const MESSAGES = {
   server_full: 'This server is full',
   try_again: 'Please try again',
   device_not_found: 'Device not found',
+  invalid_installation: 'Invalid device installation identifier',
   // payments
   choose_plan: 'Choose a plan',
   payer_name_required: 'Enter the name the payment was sent from',

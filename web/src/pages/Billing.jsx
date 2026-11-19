@@ -31,8 +31,13 @@ export default function Billing() {
   }, []);
 
   useEffect(() => {
-    load().catch((e) => toast(t('dash.loadFail'), { type: 'error', body: e.message }));
-    refreshUser();
+    const refresh = () => {
+      load().catch((e) => toast(t('dash.loadFail'), { type: 'error', body: e.message }));
+      refreshUser();
+    };
+    refresh();
+    window.addEventListener('jirex:android-account-updated', refresh);
+    return () => window.removeEventListener('jirex:android-account-updated', refresh);
   }, []);
 
   const pending = payments?.find((p) => p.status === 'pending');

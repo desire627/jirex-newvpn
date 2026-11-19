@@ -3,6 +3,7 @@ package com.jirex.vpn;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -15,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.InputType;
 import android.text.format.Formatter;
 import android.view.Gravity;
@@ -25,7 +27,11 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 import java.util.Locale;
+import java.util.UUID;
+import org.amnezia.awg.backend.Tunnel.State;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
@@ -38,6 +44,15 @@ public final class MainActivity extends Activity {
     private TextView badge, status, detail, downloaded, uploaded, location, account;
     private View power;
     private boolean busy;
+    private boolean visible;
+    private boolean polling;
+    private boolean permissionPending;
+    private String approval;
+    private String permissionDeclined;
+    private String automaticAttempt;
+    private long automaticAttemptAt;
+    private JirexApi portalApi;
+    private CustomerPortal portal;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,16 +60,31 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(0xff0d1420);
         getWindow().setNavigationBarColor(0xff0a0f17);
         buildHome();
+        String address = settings().getString("origin", BuildConfig.JIREX_URL);
+        if (!address.isEmpty()) {
+            try {
+                portalApi = new JirexApi(address);
+            } catch (Exception ignored) {}
+        }
     }
 
     @Override protected void onStart() {
         super.onStart();
+        visible = true;
         handler.post(refresh);
+        handler.post(checkAccount);
     }
 
     @Override protected void onStop() {
+        visible = false;
         handler.removeCallbacks(refresh);
+        handler.removeCallbacks(checkAccount);
         super.onStop();
+    }
+
+    @Override protected void onDestroy() {
+        if (portal != null) portal.destroy();
+        super.onDestroy();
     }
 
     private void buildHome() {
@@ -66,15 +96,7 @@ public final class MainActivity extends Activity {
         screen.setPadding(dp(24), dp(20), dp(24), dp(28));
         scroll.addView(screen);
         setContentView(scroll);
-        if (Build.VERSION.SDK_INT >= 30) {
-            getWindow().setDecorFitsSystemWindows(false);
-            scroll.setOnApplyWindowInsetsListener((view, insets) -> {
-                var bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-                view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-                return insets;
-            });
-            scroll.requestApplyInsets();
-        }
+        applyInsets(scroll);
 
         LinearLayout header = row();
         ImageView mark = new ImageView(this);
@@ -108,6 +130,11 @@ public final class MainActivity extends Activity {
         downloaded = stat(stats, "↓  Downloaded", 0);
         uploaded = stat(stats, "↑  Uploaded", 10);
         add(stats, 10);
+        var navigation = row();
+        addNavigation(navigation, "Devices", "/dashboard");
+        addNavigation(navigation, "Payments", "/billing");
+        addNavigation(navigation, "Account", "/account");
+        add(navigation, 16);
         account = center("Sign in", 14, MINT, true);
         account.setPadding(0, dp(12), 0, dp(12));
         account.setOnClickListener(v -> {
@@ -120,6 +147,7 @@ public final class MainActivity extends Activity {
                         try {
                             vpn.api.request("POST", "/auth/logout", null);
                         } finally {
+                            vpn.api.clearSession();
                             vpn.api = null;
                             vpn.servers = null;
                         }
@@ -127,6 +155,74 @@ public final class MainActivity extends Activity {
         });
         add(account, 14);
         updateLocation();
+    }
+
+    private void applyInsets(View root) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            getWindow().setDecorFitsSystemWindows(false);
+            root.setOnApplyWindowInsetsListener((view, insets) -> {
+                var bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                return insets;
+            });
+            root.requestApplyInsets();
+        }
+    }
+
+    private SharedPreferences settings() {
+        return getSharedPreferences("devices", MODE_PRIVATE);
+    }
+
+    private void addNavigation(LinearLayout navigation, String title, String path) {
+        TextView button = center(title, 14, MINT, true);
+        button.setPadding(0, dp(14), 0, dp(14));
+        button.setOnClickListener(v -> {
+            if ("/".equals(path)) closePortal();
+            else openPortal(path);
+        });
+        navigation.addView(button, new LinearLayout.LayoutParams(0, -2, 1));
+    }
+
+    private void openPortal(String path) {
+        if (busy || permissionPending) return;
+        if (portalApi == null) {
+            showSignIn(false, () -> openPortal(path));
+            return;
+        }
+        if (portal == null) {
+            portal = new CustomerPortal(this, portalApi);
+            LinearLayout frame = column();
+            frame.setBackgroundColor(0xff0d1420);
+            LinearLayout navigation = row();
+            addNavigation(navigation, "VPN", "/");
+            addNavigation(navigation, "Devices", "/dashboard");
+            addNavigation(navigation, "Payments", "/billing");
+            addNavigation(navigation, "Account", "/account");
+            frame.addView(navigation, new LinearLayout.LayoutParams(-1, -2));
+            frame.addView(portal.view, new LinearLayout.LayoutParams(-1, 0, 1));
+            setContentView(frame);
+            applyInsets(frame);
+        }
+        portal.open(path);
+    }
+
+    private void closePortal() {
+        if (portal == null) return;
+        CustomerPortal oldPortal = portal;
+        portal = null;
+        buildHome();
+        oldPortal.destroy();
+        scheduleAccountCheck();
+    }
+
+    @Override public void onBackPressed() {
+        if (portal != null && portal.view.canGoBack()) {
+            portal.view.goBack();
+        } else if (portal != null) {
+            closePortal();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     private TextView stat(LinearLayout row, String title, int margin) {
@@ -143,12 +239,16 @@ public final class MainActivity extends Activity {
     }
 
     private void showSignIn(boolean connectAfter) {
+        showSignIn(connectAfter, () -> {});
+    }
+
+    private void showSignIn(boolean connectAfter, Runnable afterSignIn) {
         LinearLayout form = column();
         form.setPadding(dp(24), 0, dp(24), 0);
         EditText address = new EditText(this);
         address.setHint("https://your-jirex-site");
         address.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        address.setText(BuildConfig.JIREX_URL);
+        address.setText(portalApi == null ? BuildConfig.JIREX_URL : portalApi.origin());
         if (BuildConfig.JIREX_URL.isEmpty()) form.addView(address);
         EditText key = new EditText(this);
         key.setHint("JIREX access key");
@@ -166,9 +266,15 @@ public final class MainActivity extends Activity {
                                 new JSONObject().put("key", accessKey)).getJSONObject("user");
                         vpn.servers = client.request("GET", "/servers", null).getJSONArray("servers");
                         vpn.accountId = user.getLong("id");
-                        vpn.selected = 0;
+                        vpn.selected = savedSelection(client, vpn.accountId, vpn.servers);
                         vpn.api = client;
-                    }, () -> { if (connectAfter) toggleConnection(); });
+                    }, () -> {
+                        portalApi = vpn.api;
+                        settings().edit().putString("origin", portalApi.origin()).apply();
+                        if (connectAfter) toggleConnection();
+                        afterSignIn.run();
+                        scheduleAccountCheck();
+                    });
                 }).show();
     }
 
@@ -191,6 +297,8 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("VPN location")
                 .setSingleChoiceItems(names, vpn.selected, (dialog, which) -> {
                     vpn.selected = which;
+                    long server = vpn.servers.optJSONObject(which).optLong("id");
+                    settings().edit().putLong(accountSlot(vpn.api, vpn.accountId) + "/location", server).apply();
                     updateLocation();
                     dialog.dismiss();
                 }).setNegativeButton("Cancel", null).show();
@@ -207,49 +315,198 @@ public final class MainActivity extends Activity {
     }
 
     private void toggleConnection() {
-        if (busy) return;
-        if (vpn.state == org.amnezia.awg.backend.Tunnel.State.UP) {
+        if (busy || permissionPending) return;
+        if (vpn.state == State.UP) {
             work("Disconnecting…", vpn::stop);
         } else if (vpn.api == null) {
             showSignIn(true);
         } else if (vpn.servers.length() == 0) {
             showError("No VPN locations are available.");
         } else {
-            Intent permission = VpnService.prepare(this);
-            if (permission == null) connect();
-            else startActivityForResult(permission, VPN_PERMISSION);
+            permissionDeclined = null;
+            requestConnection();
+        }
+    }
+
+    private void requestConnection() {
+        Intent permission = VpnService.prepare(this);
+        if (permission == null) {
+            connect();
+        } else {
+            permissionPending = true;
+            startActivityForResult(permission, VPN_PERMISSION);
         }
     }
 
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
-        if (request == VPN_PERMISSION && result == RESULT_OK && vpn.api != null) connect();
+        if (request == VPN_PERMISSION) {
+            permissionPending = false;
+            if (result == RESULT_OK && vpn.api != null) connect();
+            else permissionDeclined = approval;
+        } else if (portal != null && request == CustomerPortal.PICK_RECEIPT) {
+            portal.finishReceipt(result == RESULT_OK && data != null ? data.getData() : null);
+        } else if (portal != null && request == CustomerPortal.SAVE_CONFIG) {
+            String path = portal.takeConfigPath();
+            if (result != RESULT_OK || data == null || data.getData() == null || path == null) return;
+            var uri = data.getData();
+            JirexApi client = portalApi;
+            work("Saving configuration…", () -> {
+                try (var output = getContentResolver().openOutputStream(uri, "wt")) {
+                    if (output == null) throw new java.io.IOException("Could not open the selected file.");
+                    client.downloadConfig(path, output);
+                }
+            }, () -> Toast.makeText(this, "Configuration saved.", Toast.LENGTH_SHORT).show());
+        }
     }
 
     private void connect() {
+        final JirexApi client = vpn.api;
+        final long accountId = vpn.accountId;
+        final long server = vpn.servers.optJSONObject(vpn.selected).optLong("id");
+        final String currentApproval = approval;
+        final SharedPreferences preferences = settings();
+        String installation = preferences.getString("installationId", null);
+        if (installation == null) {
+            installation = UUID.randomUUID().toString();
+            preferences.edit().putString("installationId", installation).apply();
+        }
+        final String installationId = installation;
         work("Connecting…", () -> {
-            if (!vpn.api.request("GET", "/auth/me", null).getJSONObject("user").getBoolean("active")) {
+            if (!client.request("GET", "/auth/me", null).getJSONObject("user").getBoolean("active")) {
                 throw new JirexApi.RequestFailure(402);
             }
-            long server = vpn.servers.getJSONObject(vpn.selected).getLong("id");
-            var preferences = getSharedPreferences("devices", MODE_PRIVATE);
-            String slot = vpn.api.origin() + "/" + vpn.accountId + "/" + server;
+            String slot = accountSlot(client, accountId) + "/" + server;
             long device = preferences.getLong(slot, 0);
             JSONObject config = null;
             if (device != 0) {
                 try {
-                    config = vpn.api.request("GET", "/devices/" + device + "/config", null);
+                    config = client.request("GET", "/devices/" + device + "/config", null);
                 } catch (JirexApi.RequestFailure error) {
                     if (error.status != 404) throw error;
                 }
             }
             if (config == null) {
-                config = vpn.api.request("POST", "/devices", new JSONObject()
-                        .put("name", android.os.Build.MODEL).put("kind", "phone").put("serverId", server));
+                config = client.request("POST", "/devices", new JSONObject().put("installationId", installationId)
+                        .put("name", Build.MODEL).put("kind", "phone").put("serverId", server));
                 preferences.edit().putLong(slot, config.getLong("id")).apply();
             }
             vpn.start(config.getString("config"));
+        }, () -> {
+            if (currentApproval != null) recordApproval(client, accountId, currentApproval);
+            if (portal != null) portal.refreshAccount();
         });
+    }
+
+    private String accountSlot(JirexApi client, long accountId) {
+        return client.origin() + "/" + accountId;
+    }
+
+    private int savedSelection(JirexApi client, long accountId, JSONArray servers) {
+        long saved = settings().getLong(accountSlot(client, accountId) + "/location", 0);
+        for (int i = 0; i < servers.length(); i++) {
+            if (servers.optJSONObject(i).optLong("id") == saved) return i;
+        }
+        return 0;
+    }
+
+    private void recordApproval(JirexApi client, long accountId, String approval) {
+        settings().edit().putString(accountSlot(client, accountId) + "/approval", approval).apply();
+    }
+
+    private void scheduleAccountCheck() {
+        handler.removeCallbacks(checkAccount);
+        if (visible) handler.post(checkAccount);
+    }
+
+    private final Runnable checkAccount = new Runnable() {
+        @Override public void run() {
+            if (!visible) return;
+            handler.postDelayed(this, 15_000);
+            if (busy || polling || permissionPending || portalApi == null) return;
+            JirexApi client = portalApi;
+            long previousAccount = vpn.accountId;
+            boolean signedIn = vpn.api != null;
+            String previousApproval = approval;
+            polling = true;
+            vpn.worker.execute(() -> {
+                try {
+                    if (!client.hasSession()) {
+                        if (signedIn) clearAccountFromPortal();
+                        return;
+                    }
+                    JSONObject state = client.request("GET", "/billing/activation", null);
+                    long accountId = state.getLong("userId");
+                    String latest = state.isNull("approval") ? null : state.getString("approval");
+                    boolean active = state.getBoolean("active");
+                    boolean accountChanged = !signedIn || previousAccount != accountId;
+                    boolean approvalChanged = !java.util.Objects.equals(previousApproval, latest);
+                    JSONArray locations = accountChanged || approvalChanged
+                            ? client.request("GET", "/servers", null).getJSONArray("servers") : null;
+                    if (vpn.state == State.UP && (accountChanged || !active)) vpn.stop();
+                    handler.post(() -> {
+                        if (isDestroyed() || portalApi != client || busy) return;
+                        long selected = !accountChanged && vpn.servers != null
+                                && vpn.servers.optJSONObject(vpn.selected) != null
+                                ? vpn.servers.optJSONObject(vpn.selected).optLong("id") : 0;
+                        vpn.api = client;
+                        vpn.accountId = accountId;
+                        if (locations != null) {
+                            vpn.servers = locations;
+                            vpn.selected = savedSelection(client, accountId, locations);
+                            for (int i = 0; selected != 0 && i < locations.length(); i++) {
+                                if (locations.optJSONObject(i).optLong("id") == selected) {
+                                    vpn.selected = i;
+                                    break;
+                                }
+                            }
+                        }
+                        approval = latest;
+                        updateLocation();
+                        if (approvalChanged && portal != null) portal.refreshAccount();
+                        if (visible && active && latest != null) maybeAutoConnect(client, accountId, latest);
+                    });
+                } catch (JirexApi.RequestFailure error) {
+                    if (error.status == 401 || error.status == 403) {
+                        try {
+                            clearAccountFromPortal();
+                        } catch (Exception ignored) {}
+                    }
+                } catch (Exception ignored) {
+                    // Retry on the next foreground check when the network returns.
+                } finally {
+                    handler.post(() -> polling = false);
+                }
+            });
+        }
+    };
+
+    private void clearAccountFromPortal() throws Exception {
+        if (vpn.state == State.UP) vpn.stop();
+        handler.post(() -> {
+            if (isDestroyed() || busy) return;
+            vpn.api = null;
+            vpn.servers = null;
+            approval = null;
+            updateLocation();
+        });
+    }
+
+    private void maybeAutoConnect(JirexApi client, long accountId, String latest) {
+        String acknowledged = settings().getString(accountSlot(client, accountId) + "/approval", null);
+        if (latest.equals(acknowledged) || latest.equals(permissionDeclined)) return;
+        if (vpn.state == State.UP) {
+            recordApproval(client, accountId, latest);
+            return;
+        }
+        if (vpn.servers == null || vpn.servers.length() == 0) return;
+        String attemptKey = accountSlot(client, accountId) + "/" + latest;
+        long now = SystemClock.elapsedRealtime();
+        if (attemptKey.equals(automaticAttempt) && now - automaticAttemptAt < 60_000) return;
+        automaticAttempt = attemptKey;
+        automaticAttemptAt = now;
+        Toast.makeText(this, "Payment approved. Connecting this phone…", Toast.LENGTH_SHORT).show();
+        requestConnection();
     }
 
     private interface Operation { void run() throws Exception; }
@@ -268,8 +525,8 @@ public final class MainActivity extends Activity {
             } catch (JirexApi.RequestFailure error) {
                 failure = switch (error.status) {
                     case 401 -> vpn.api == null ? "Check your access key and try again." : "Your session expired. Sign in again.";
-                    case 402 -> "You need an active plan. Renew on the JIREX website.";
-                    case 409 -> "Your device limit may have been reached. Check your devices on the JIREX website.";
+                    case 402 -> "You need an active plan. Open Payments to choose or renew a plan.";
+                    case 409 -> "Your device limit may have been reached. Open Devices to manage your registered devices.";
                     default -> error.getMessage();
                 };
                 if (error.status == 401) vpn.api = null;
@@ -289,7 +546,7 @@ public final class MainActivity extends Activity {
 
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
-            if (!busy) vpn.worker.execute(() -> {
+            if (!busy && !polling) vpn.worker.execute(() -> {
                 try {
                     var snapshot = vpn.snapshot();
                     handler.post(() -> { if (!busy && !isDestroyed()) showSnapshot(snapshot); });

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { requireAuth, requireCustomer } from '../auth.js';
+import { hasAccess, requireAuth, requireCustomer } from '../auth.js';
 import { config } from '../config.js';
 import { getSetting, one, query } from '../db.js';
 import { fail } from '../errors.js';
@@ -39,6 +39,20 @@ router.get('/payments', requireCustomer, async (req, res) => {
     [req.user.id],
   );
   res.json({ payments: rows });
+});
+
+router.get('/activation', requireCustomer, async (req, res) => {
+  const approval = await one(
+    `SELECT id, reviewed_at FROM payments
+      WHERE user_id = $1 AND provider = 'transfer' AND status = 'successful' AND reviewed_at IS NOT NULL
+      ORDER BY reviewed_at DESC, id DESC LIMIT 1`,
+    [req.user.id],
+  );
+  res.set('Cache-Control', 'private, no-store').json({
+    approval: approval ? `${approval.reviewed_at.toISOString()}/${approval.id}` : null,
+    active: hasAccess(req.user),
+    userId: req.user.id,
+  });
 });
 
 const uploadLimiter = rateLimit({

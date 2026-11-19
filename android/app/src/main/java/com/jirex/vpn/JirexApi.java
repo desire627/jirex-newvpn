@@ -1,7 +1,9 @@
 package com.jirex.vpn;
 
+import android.webkit.CookieManager;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import javax.net.ssl.HttpsURLConnection;
@@ -9,7 +11,6 @@ import org.json.JSONObject;
 
 final class JirexApi {
     private final String origin;
-    private String session;
 
     JirexApi(String address) throws Exception {
         URL url = new URL(address.trim());
@@ -26,14 +27,9 @@ final class JirexApi {
     }
 
     JSONObject request(String method, String path, JSONObject body) throws Exception {
-        HttpsURLConnection connection = (HttpsURLConnection) new URL(origin + "/api" + path).openConnection();
+        HttpsURLConnection connection = open(method, "/api" + path);
         try {
-            connection.setInstanceFollowRedirects(false);
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(20000);
-            connection.setRequestMethod(method);
             connection.setRequestProperty("Accept", "application/json");
-            if (session != null) connection.setRequestProperty("Cookie", session);
             if (body != null) {
                 connection.setDoOutput(true);
                 connection.setRequestProperty("Content-Type", "application/json");
@@ -48,8 +44,9 @@ final class JirexApi {
                 if (cookie == null || !cookie.startsWith("session=")) {
                     throw new IOException("JIREX did not return a session.");
                 }
-                session = cookie.split(";", 2)[0];
+                saveCookie(cookie);
             }
+            if ("/auth/logout".equals(path) || "/auth/logout-all".equals(path)) clearSession();
             try (var stream = connection.getInputStream()) {
                 var data = new ByteArrayOutputStream();
                 byte[] buffer = new byte[8192];
@@ -58,6 +55,58 @@ final class JirexApi {
                     data.write(buffer, 0, count);
                 }
                 return new JSONObject(new String(data.toByteArray(), StandardCharsets.UTF_8));
+            }
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private HttpsURLConnection open(String method, String path) throws IOException {
+        HttpsURLConnection connection = (HttpsURLConnection) new URL(origin + path).openConnection();
+        connection.setInstanceFollowRedirects(false);
+        connection.setUseCaches(false);
+        connection.setConnectTimeout(10000);
+        connection.setReadTimeout(20000);
+        connection.setRequestMethod(method);
+        String cookie = CookieManager.getInstance().getCookie(origin);
+        if (cookie != null) connection.setRequestProperty("Cookie", cookie);
+        return connection;
+    }
+
+    private void saveCookie(String cookie) {
+        CookieManager.getInstance().setCookie(origin, cookie);
+        CookieManager.getInstance().flush();
+    }
+
+    void clearSession() {
+        saveCookie("session=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax");
+    }
+
+    boolean hasSession() {
+        String cookies = CookieManager.getInstance().getCookie(origin);
+        if (cookies == null) return false;
+        for (String cookie : cookies.split(";")) {
+            if (cookie.trim().startsWith("session=")) return true;
+        }
+        return false;
+    }
+
+    void downloadConfig(String path, OutputStream destination) throws IOException {
+        HttpsURLConnection connection = open("GET", path);
+        try {
+            int status = connection.getResponseCode();
+            if (status != 200) throw new RequestFailure(status);
+            if (connection.getContentType() == null || !connection.getContentType().startsWith("text/plain")) {
+                throw new IOException("JIREX returned an unexpected download.");
+            }
+            try (var stream = connection.getInputStream()) {
+                var bytes = new ByteArrayOutputStream();
+                var buffer = new byte[1024];
+                for (int count; (count = stream.read(buffer)) != -1;) {
+                    if (bytes.size() + count > 16 * 1024) throw new IOException("JIREX configuration is too large.");
+                    bytes.write(buffer, 0, count);
+                }
+                bytes.writeTo(destination);
             }
         } finally {
             connection.disconnect();
