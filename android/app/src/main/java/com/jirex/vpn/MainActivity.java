@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -25,9 +26,11 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.webkit.WebView;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
@@ -44,11 +47,13 @@ public final class MainActivity extends Activity {
     private LinearLayout screen;
     private TextView badge, status, detail, connectedDevices, remainingDays, location;
     private TextView startupStatus;
+    private ProgressBar startupProgress;
     private Integer onlineDevices;
     private Instant accessUntil;
     private boolean expiryLoaded;
     private LinearLayout bottomBar;
     private String selectedTab = "/";
+    private boolean loginFlow;
     private String renderedNavigation;
     private View power;
     private boolean busy;
@@ -99,9 +104,40 @@ public final class MainActivity extends Activity {
     private void showStartup() {
         LinearLayout page = column();
         page.setGravity(Gravity.CENTER);
-        page.setBackgroundColor(0xff0d1420);
-        startupStatus = center("Checking your session…", 16, Color.WHITE, true);
-        page.addView(startupStatus);
+        page.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff101e29, 0xff0a0f17}));
+        LinearLayout content = column();
+        content.setGravity(Gravity.CENTER_HORIZONTAL);
+        content.setPadding(dp(24), dp(24), dp(24), dp(24));
+        page.addView(content, new LinearLayout.LayoutParams(-1, -2));
+
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.jirex_mark);
+        logo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        logo.setPadding(dp(23), dp(23), dp(23), dp(23));
+        GradientDrawable logoBackground = card(30);
+        logoBackground.setColor(0xff142a30);
+        logoBackground.setStroke(dp(1), 0xff26504c);
+        logo.setBackground(logoBackground);
+        content.addView(logo, new LinearLayout.LayoutParams(dp(108), dp(108)));
+
+        TextView welcome = center("Welcome to JIREX", 28, Color.WHITE, true);
+        if (Build.VERSION.SDK_INT >= 28) welcome.setAccessibilityHeading(true);
+        LinearLayout.LayoutParams titleLayout = new LinearLayout.LayoutParams(-2, -2);
+        titleLayout.topMargin = dp(24);
+        content.addView(welcome, titleLayout);
+
+        startupStatus = center("Getting things ready…", 14, MUTED, false);
+        startupStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        LinearLayout.LayoutParams statusLayout = new LinearLayout.LayoutParams(-2, -2);
+        statusLayout.topMargin = dp(8);
+        content.addView(startupStatus, statusLayout);
+        startupProgress = new ProgressBar(this);
+        startupProgress.setIndeterminateTintList(ColorStateList.valueOf(MINT));
+        startupProgress.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        LinearLayout.LayoutParams progressLayout = new LinearLayout.LayoutParams(dp(26), dp(26));
+        progressLayout.topMargin = dp(24);
+        content.addView(startupProgress, progressLayout);
         setContentView(page);
         applyInsets(page);
     }
@@ -134,6 +170,7 @@ public final class MainActivity extends Activity {
 
     private void buildHome() {
         startupStatus = null;
+        startupProgress = null;
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -214,7 +251,8 @@ public final class MainActivity extends Activity {
 
     private void updateNavigation() {
         if (bottomBar == null) return;
-        bottomBar.setVisibility("/login".equals(selectedTab) ? View.GONE : View.VISIBLE);
+        bottomBar.setVisibility(loginFlow || "/login".equals(selectedTab) || "/signup".equals(selectedTab)
+                ? View.GONE : View.VISIBLE);
         boolean signedIn = vpn.api != null;
         String state = selectedTab + ":" + signedIn;
         if (state.equals(renderedNavigation)) return;
@@ -256,7 +294,7 @@ public final class MainActivity extends Activity {
     private void accountAction() {
         JirexApi client = vpn.api;
         if (client == null) {
-            openPortal("/login");
+            showLogin();
             return;
         }
         new AlertDialog.Builder(this).setTitle(R.string.sign_out_title)
@@ -276,12 +314,26 @@ public final class MainActivity extends Activity {
             showServiceSetup();
             return;
         }
-        selectedTab = path;
         if (portal == null) {
-            portal = new CustomerPortal(this, portalApi, this::scheduleAccountCheck);
+            selectedTab = "";
+            portal = new CustomerPortal(this, portalApi, this::onPortalRouteChanged);
             showPage(portal.view);
         } else updateNavigation();
         portal.open(path);
+    }
+
+    private void onPortalRouteChanged(WebView view, String path) {
+        if (portal == null || portal.view != view) return;
+        selectedTab = switch (path == null ? "" : path.replaceFirst("/$", "")) {
+            case "/dashboard" -> "/dashboard";
+            case "/billing" -> "/billing";
+            case "/account" -> "/account";
+            case "/login" -> "/login";
+            case "/signup" -> "/signup";
+            default -> "";
+        };
+        updateNavigation();
+        scheduleAccountCheck();
     }
 
     private void showLogin() {
@@ -292,13 +344,19 @@ public final class MainActivity extends Activity {
         accessUntil = null;
         expiryLoaded = false;
         startupStatus = null;
-        if (!"/login".equals(selectedTab)) openPortal("/login");
+        startupProgress = null;
+        if (!loginFlow) {
+            loginFlow = true;
+            if ("/signup".equals(selectedTab)) updateNavigation();
+            else openPortal("/login");
+        }
     }
 
     private void closePortal() {
         if (portal == null) return;
         CustomerPortal oldPortal = portal;
         portal = null;
+        loginFlow = false;
         selectedTab = "/";
         buildHome();
         oldPortal.destroy();
@@ -308,7 +366,7 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed() {
         if (portal != null && portal.view.canGoBack()) {
             portal.view.goBack();
-        } else if (portal != null && !"/login".equals(selectedTab)) {
+        } else if (portal != null && !loginFlow) {
             closePortal();
         } else {
             super.onBackPressed();
@@ -331,7 +389,7 @@ public final class MainActivity extends Activity {
     private void chooseLocation() {
         if (busy) return;
         if (vpn.api == null) {
-            openPortal("/login");
+            showLogin();
             return;
         }
         if (vpn.state == org.amnezia.awg.backend.Tunnel.State.UP) {
@@ -379,7 +437,7 @@ public final class MainActivity extends Activity {
         if (vpn.state == State.UP) {
             work("Disconnecting…", vpn::stop);
         } else if (vpn.api == null) {
-            openPortal("/login");
+            showLogin();
         } else if (vpn.servers.length() == 0) {
             showError("No VPN locations are available.");
         } else {
@@ -529,7 +587,7 @@ public final class MainActivity extends Activity {
                             onlineDevices = null;
                             expiryLoaded = false;
                         }
-                        if ("/login".equals(selectedTab)) closePortal();
+                        if (loginFlow) closePortal();
                         else if (startupStatus != null) buildHome();
                         else updateLocation();
                         if (approvalChanged && portal != null) portal.refreshAccount();
@@ -583,7 +641,14 @@ public final class MainActivity extends Activity {
         handler.post(() -> {
             if (!isDestroyed() && startupStatus != null) {
                 startupStatus.setText("Could not check your session. Tap to retry.");
-                startupStatus.setOnClickListener(v -> scheduleAccountCheck());
+                startupProgress.setVisibility(View.INVISIBLE);
+                startupStatus.setOnClickListener(v -> {
+                    startupStatus.setOnClickListener(null);
+                    startupStatus.setClickable(false);
+                    startupStatus.setText("Getting things ready…");
+                    startupProgress.setVisibility(View.VISIBLE);
+                    scheduleAccountCheck();
+                });
             }
         });
     }

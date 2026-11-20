@@ -12,6 +12,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import java.util.function.BiConsumer;
 
 final class CustomerPortal {
     static final int PICK_RECEIPT = 11;
@@ -23,7 +24,7 @@ final class CustomerPortal {
     private ValueCallback<Uri[]> receiptPicker;
     private String configPath;
 
-    CustomerPortal(Activity activity, JirexApi api, Runnable accountCheck) {
+    CustomerPortal(Activity activity, JirexApi api, BiConsumer<WebView, String> onRouteChanged) {
         this.activity = activity;
         this.api = api;
         view = new WebView(activity);
@@ -37,7 +38,8 @@ final class CustomerPortal {
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, false);
         view.setWebViewClient(new WebViewClient() {
             @Override public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
-                if (isPortalUrl(Uri.parse(url))) accountCheck.run();
+                Uri uri = Uri.parse(url);
+                if (isPortalUrl(uri)) onRouteChanged.accept(view, uri.getPath());
             }
 
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
