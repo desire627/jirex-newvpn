@@ -2,9 +2,9 @@
 
 Open this directory in Android Studio with JDK 17 or later, Gradle 8.14, and Android SDK 36. Run the app on a device with Android 8.0 or later, or build a debug APK with `gradle :app:assembleDebug`.
 
-Pass `-PjirexUrl=https://your-jirex-domain` to configure the service address at build time. Without that property the sign-in dialog asks for an HTTPS base URL. Use a real JIREX deployment with a reachable AmneziaWG node and an active customer account.
+Pass `-PjirexUrl=https://your-jirex-domain` to configure the service address at build time. Without that property the app asks for the HTTPS base URL on first launch. Use a real JIREX deployment with a reachable AmneziaWG node and an active customer account.
 
-Enter the customer's access key, choose a location, and tap the power button. Accept Android's VPN prompt and open a webpage to generate traffic. The home screen shows a recent tunnel handshake, elapsed time, and real byte counters.
+The app opens the sign-in page when there is no valid session. Sign in with an access key or use the sign-up link to create an account. Choose a location, tap the power button, and accept Android's VPN prompt. The VPN screen shows the connection status, elapsed time, connected device count, and days remaining before access expires.
 
 Devices, Payments, and Account open the same customer pages inside the app. In Payments you can choose a plan, see the bank transfer details, attach a receipt, and track its review.
 

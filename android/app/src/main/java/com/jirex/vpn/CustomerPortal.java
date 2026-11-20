@@ -23,7 +23,7 @@ final class CustomerPortal {
     private ValueCallback<Uri[]> receiptPicker;
     private String configPath;
 
-    CustomerPortal(Activity activity, JirexApi api) {
+    CustomerPortal(Activity activity, JirexApi api, Runnable accountCheck) {
         this.activity = activity;
         this.api = api;
         view = new WebView(activity);
@@ -36,6 +36,10 @@ final class CustomerPortal {
         settings.setUserAgentString(settings.getUserAgentString() + " JirexAndroid/0.2");
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, false);
         view.setWebViewClient(new WebViewClient() {
+            @Override public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+                if (isPortalUrl(Uri.parse(url))) accountCheck.run();
+            }
+
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (isPortalUrl(request.getUrl())) return false;
                 if (request.isForMainFrame()) openExternal(request.getUrl());
